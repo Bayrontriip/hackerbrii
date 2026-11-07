@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Un pequeño corazón para ti.">
+  <title>teamo...</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23ff4778' d='M16 28 3 15C-5 3 10-3 16 7 22-3 37 3 29 15Z'/%3E%3C/svg%3E">
+  <style>
+    * { box-sizing: border-box; }
+    :root { color-scheme: dark; background: #000; }
+    body { margin: 0; background: #000; color: #fff; overflow: hidden; }
+    main { position: relative; width: 100%; height: 100svh; height: 100dvh; min-height: 240px; overflow: hidden; isolation: isolate; }
+    main::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 48%, #ff386015 0%, #c3173807 28%, transparent 60%);
+      opacity: 0; transition: opacity 3s ease;
+    }
+    body.message-visible main::before { opacity: 1; }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    button { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    button:focus-visible { outline: 1px solid #ff7397; outline-offset: 10px; }
+    #start {
+      --button-size: min(260px, 58vw, 58svh);
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: var(--button-size); height: var(--button-size); padding: 0;
+      border: 0; border-radius: 50%; background: #280c18; color: #ffe7f0;
+      box-shadow: 0 12px 0 #10070c, 0 15px 0 1px #562039, 0 20px 55px #ff387a15;
+      transition: opacity .5s ease, filter .5s ease, transform .5s ease;
+      isolation: isolate;
+    }
+    #start::before {
+      content: ''; position: absolute; inset: -15px; border-radius: 50%;
+      border: 1px solid #ff73972b; border-top-color: #ffa5c5; border-bottom-color: #ff73977a;
+      animation: orbit 10s linear infinite; pointer-events: none;
+    }
+    #start::after {
+      content: ''; position: absolute; inset: -7px; border: 2px solid #ff9fbe;
+      border-radius: 50%; opacity: 0; pointer-events: none;
+    }
+    .button-face {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: calc(var(--button-size) * .07);
+      border: 2px solid #d56a91; border-radius: 50%;
+      background: radial-gradient(ellipse at 50% 15%, #492137 0%, #25101e 53%, #160b14 100%);
+      box-shadow: inset 0 3px 0 #ffb4cf48, inset 0 -7px 0 #0c050b, inset 0 0 0 7px #ffffff03, 0 7px 0 #6a2945;
+      transform: translateY(-4px);
+      transition: transform .14s ease-out, box-shadow .14s ease-out, border-color .2s, filter .2s;
+    }
+    .button-heart {
+      width: calc(var(--button-size) * .13); height: auto; color: #ff85ae;
+      filter: drop-shadow(0 0 8px #ff538f66); animation: idle-heart 2.8s ease-in-out infinite;
+    }
+    .button-label { display: flex; align-items: center; gap: calc(var(--button-size) * .013); transform: translateY(-3px); }
+    .start-letter { width: calc(var(--button-size) * .063); height: auto; overflow: visible; filter: drop-shadow(0 3px 0 #8f3d5e); }
+    @media (hover: hover) {
+      #start:hover .button-face { transform: translateY(-7px); border-color: #ffbad4; filter: brightness(1.15); }
+    }
+    #start:active .button-face, #start.activating .button-face {
+      transform: translateY(6px) scale(.97); border-color: #ffd3e3;
+      box-shadow: inset 0 2px 8px #0008, inset 0 0 24px #ff61942b, 0 1px 0 #6a2945;
+    }
+    #start.activating::after { animation: button-ripple .7s ease-out both; }
+    #start.activating .button-heart { animation: none; }
+    body.playing #start { opacity: 0; filter: blur(6px); transform: translate(-50%, -50%) scale(.88); pointer-events: none; }
+    @keyframes orbit { to { transform: rotate(360deg); } }
+    @keyframes idle-heart { 0%, 100% { opacity: .65; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
+    @keyframes button-ripple { 0% { opacity: .8; transform: scale(.95); } 100% { opacity: 0; transform: scale(1.65); } }
+    #message {
+      position: absolute; top: 48%; left: 50%; width: calc(var(--heart-size) * .68); margin: 0;
+      transform: translate(-50%, -50%); display: flex; flex-direction: column;
+      align-items: center; gap: calc(var(--heart-size) * .026);
+      color: #fff0f5; font-weight: normal; pointer-events: none;
+      filter: drop-shadow(0 2px 0 #71354b) drop-shadow(0 0 10px #ff90b14d);
+    }
+    .message-line { display: flex; justify-content: center; gap: calc(var(--heart-size) * .045); }
+    .word { display: inline-flex; gap: calc(var(--heart-size) * .008); }
+    .letter { display: block; width: calc(var(--heart-size) * .042); height: auto; opacity: 0; overflow: visible; }
+    .message-line:last-child .letter { width: calc(var(--heart-size) * .024); color: #ff9cba; }
+    body.message-visible .letter { animation: fall 1.2s cubic-bezier(.16, .75, .24, 1) both; animation-delay: var(--delay); }
+    @keyframes fall {
+      0% { opacity: 0; transform: translateY(-85vh); }
+      18% { opacity: 1; }
+      78% { transform: translateY(3px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    #replay {
+      position: absolute; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+      background: none; border: 0; color: #aaa; padding: 12px 18px;
+      font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em;
+      opacity: 0; visibility: hidden; transition: opacity 1s, color .2s;
+    }
+    #replay:hover { color: #ffadc3; }
+    body.finished #replay { opacity: .65; visibility: visible; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    @media (max-height: 450px) { #replay { bottom: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+      body.message-visible .letter { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main aria-label="Una sorpresa para ti">
+    <canvas id="matrix" aria-hidden="true"></canvas>
+    <button id="start" type="button" aria-label="teamo...">
+      <span class="button-face" aria-hidden="true">
+        <svg class="button-heart" viewBox="0 0 13 11" shape-rendering="crispEdges">
+          <path fill="currentColor" d="M1 0h4v1h1v1h1V1h1V0h4v1h1v5h-1v1h-1v1h-1v1H9v1H8v1H5v-1H4V9H3V8H2V7H1V6H0V1h1Z"/>
+        </svg>
+        <span id="start-label" class="button-label">teamo...</span>
+      </span>
+    </button>
+    <h1 id="message" aria-label="descansa mi negra ..." aria-hidden="true"></h1>
+    <p id="announcement" class="sr-only" role="status"></p>
+    <button id="replay" type="button" aria-label="Volver a ver la animación">otra vez ↺</button>
+  </main>
+  <script>
+    // Todo está aquí: sin fuentes externas, librerías ni imágenes que descargar.
+    const canvas = document.querySelector('#matrix');
+    const ctx = canvas.getContext('2d');
+    const start = document.querySelector('#start');
+    const replay = document.querySelector('#replay');
+    const message = document.querySelector('#message');
+    const announcement = document.querySelector('#announcement');
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const symbols = '01アイウエオカキクケコサシスセソタチツテトナニヌネノ';
+    const pick = () => symbols[Math.floor(Math.random() * symbols.length)];
+    const clamp = (n) => Math.max(0, Math.min(1, n));
+    let width, height, size, cell, centerY, particles = [], streams = [], hearts = [];
+    let running = false, begun = 0, frame = 0, lastFrame = 0, shown = false, finished = false;
+    const miniHeart = new Path2D('M 0 4 C -1 3 -6 0 -6 -3 C -6 -7 -1 -8 0 -4 C 1 -8 6 -7 6 -3 C 6 0 1 3 0 4 Z');
+    const inHeart = (x, y) => Math.pow(x*x + y*y - 1, 3) - x*x*y*y*y <= 0;
+
+    // Letras de píxeles hechas a mano, con el aspecto cuadrado de Minecraft.
+    const glyphs = {
+      d: ['00001','00001','01101','10011','10001','10001','01111'],
+      e: ['00000','00000','01110','10001','11111','10000','01110'],
+      s: ['00000','00000','01111','10000','01110','00001','11110'],
+      c: ['00000','00000','01111','10000','10000','10000','01111'],
+      a: ['00000','00000','01110','00001','01111','10001','01111'],
+      n: ['00000','00000','11110','10001','10001','10001','10001'],
+      m: ['00000','00000','11010','10101','10101','10101','10101'],
+      i: ['00100','00000','01100','00100','00100','00100','01110'],
+      g: ['00000','01111','10001','10001','01111','00001','01110'],
+      r: ['00000','00000','10111','11000','10000','10000','10000'],
+      t: ['01000','01000','11110','01000','01000','01001','00110'],
+      o: ['00000','00000','01110','10001','10001','10001','01110'],
+      '.': ['00000','00000','00000','00000','00000','00110','00110'],
+    };
+
+    function pixelLetter(character, className) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 5 7');
+      svg.setAttribute('shape-rendering', 'crispEdges');
+      svg.classList.add(className);
+      glyphs[character].forEach((row, y) => [...row].forEach((pixel, x) => {
+        if (pixel !== '1') return;
+        const square = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        for (const [key, value] of Object.entries({x, y, width: 1, height: 1, fill: 'currentColor'})) square.setAttribute(key, value);
+        svg.append(square);
+      }));
+      return svg;
+    }
+
+    document.querySelector('#start-label').replaceChildren(
+      ...[...'teamo...'].map(character => pixelLetter(character, 'start-letter'))
+    );
+    let letterIndex = 0;
+    for (const line of ['descansa', 'mi negra', '...']) {
+      const lineElement = document.createElement('span');
+      lineElement.className = 'message-line';
+      lineElement.setAttribute('aria-hidden', 'true');
+      for (const word of line.split(' ')) {
+        const group = document.createElement('span');
+        group.className = 'word';
+        group.setAttribute('aria-hidden', 'true');
+        for (const character of word) {
+          const svg = pixelLetter(character, 'letter');
+          svg.style.setProperty('--delay', `${letterIndex++ * 65}ms`);
+          group.append(svg);
+        }
+        lineElement.append(group);
+      }
+      message.append(lineElement);
+    }
+
+    function resize() {
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      size = Math.min(width * .92, height * .76, 850);
+      centerY = height * .48;
+      message.style.setProperty('--heart-size', `${size}px`);
+      cell = Math.max(6, size / 59);
+      particles = [];
+      const radius = size / 2.45;
+      for (let row = 0; row < size / cell; row++) {
+        for (let col = 0; col < size / cell; col++) {
+          const x = (col * cell - size / 2) / radius;
+          const y = -(row * cell - size / 2) / radius;
+          if (!inHeart(x, y)) continue;
+          const step = cell / radius * 1.4;
+          particles.push({
+            x: width / 2 + x * radius,
+            y: centerY - y * radius,
+            edge: !inHeart(x-step,y) || !inHeart(x+step,y) || !inHeart(x,y-step) || !inHeart(x,y+step),
+            delay: Math.random() * 2000 + row * 12,
+            duration: 1600 + Math.random() * 1400,
+            symbol: pick(), phase: Math.random() * Math.PI * 2,
+          });
+        }
+      }
+      streams = Array.from({length: Math.ceil(width / 22)}, (_, i) => ({
+        x: i * 22, offset: Math.random() * height * 2,
+        speed: 100 + Math.random() * 150,
+      }));
+      hearts = Array.from({length: Math.round(Math.min(64, Math.max(28, width / 22)))}, () => ({
+        x: Math.random() * width, offset: Math.random() * (height + 80),
+        speed: 24 + Math.random() * 48, scale: .45 + Math.random() * 1.15,
+        phase: Math.random() * Math.PI * 2, opacity: .18 + Math.random() * .38,
+      }));
+      if (running && reducedMotion.matches) draw(9000);
+    }
+
+    function drawHeartRain(time, still) {
+      const reveal = still ? 1 : clamp((time - 2500) / 2500);
+      if (!reveal) return;
+      const seconds = still ? 0 : time / 1000;
+      for (const heart of hearts) {
+        const y = (seconds * heart.speed + heart.offset) % (height + 80) - 40;
+        const x = heart.x + Math.sin(seconds * .6 + heart.phase) * 22;
+        // La lluvia queda detrás del corazón y deja respirar el mensaje.
+        const distance = Math.hypot((x - width/2) / (size*.52), (y - centerY) / (size*.5));
+        const opacity = heart.opacity * reveal * (.12 + .88 * clamp(distance));
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.sin(seconds * .45 + heart.phase) * .3);
+        ctx.scale(heart.scale, heart.scale);
+        ctx.fillStyle = `rgba(255,116,157,${opacity})`;
+        ctx.shadowColor = '#ff5688';
+        ctx.shadowBlur = heart.scale > 1.2 ? 9 : 0;
+        ctx.fill(miniHeart);
+        ctx.restore();
+      }
+    }
+
+    function draw(time) {
+      ctx.clearRect(0, 0, width, height);
+      const still = reducedMotion.matches;
+      drawHeartRain(time, still);
+      const rainOpacity = still ? 0 : clamp(time / 800) * (1 - clamp((time - 3000) / 3000));
+      ctx.font = '13px monospace';
+      for (const stream of streams) {
+        if (rainOpacity <= 0) break;
+        const head = (time / 1000 * stream.speed + stream.offset) % (height + 300) - 100;
+        for (let tail = 0; tail < 12; tail++) {
+          ctx.fillStyle = tail === 0 ? `rgba(179,255,201,${rainOpacity * .5})` : `rgba(25,220,99,${rainOpacity * (1 - tail/12) * .22})`;
+          ctx.fillText(symbols[(Math.floor(time / 140) + tail + Math.floor(stream.x)) % symbols.length], stream.x, head - tail * 17);
+        }
+      }
+      const settle = clamp((time - 3300) / 2400);
+      const pulse = still ? 1 : 1 + Math.sin(time / 780) * .012 * settle;
+      ctx.save();
+      ctx.translate(width/2, centerY);
+      ctx.scale(pulse, pulse);
+      ctx.translate(-width/2, -centerY);
+      ctx.font = `${cell * .95}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const point of particles) {
+        const progress = still ? 1 : clamp((time - point.delay) / point.duration);
+        if (progress <= 0) continue;
+        const y = -height * .3 + (point.y + height * .3) * (1 - Math.pow(1 - progress, 3));
+        if (progress < 1) {
+          for (let tail = 1; tail <= 3; tail++) {
+            ctx.fillStyle = `rgba(42,255,118,${(1-progress) * .18 / tail})`;
+            ctx.fillText(point.symbol, point.x, y - tail * cell);
+          }
+        }
+        const pink = progress === 1 ? settle : 0;
+        const shimmer = .65 + .2 * Math.sin(point.phase + (still ? 0 : time / 1600));
+        const textSpace = Math.exp(-Math.pow((point.x-width/2)/(size*.29), 4) - Math.pow((point.y-centerY)/(size*.16), 4));
+        const dimming = clamp((time - 5200) / 1200) * textSpace;
+        const brightness = (point.edge ? .95 : shimmer) * (1 - dimming * .86);
+        const red = Math.round(65 + 190 * pink);
+        const green = Math.round(245 - (point.edge ? 127 : 171) * pink);
+        const blue = Math.round(128 + (point.edge ? 48 : 12) * pink);
+        ctx.fillStyle = `rgba(${red},${green},${blue},${progress < 1 ? .85 : brightness})`;
+        if (!still && Math.random() < .012) point.symbol = pick();
+        ctx.fillText(point.symbol, point.x, y);
+      }
+      ctx.restore();
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    function tick(now) {
+      const elapsed = now - begun;
+      if (now - lastFrame >= 32) {
+        draw(elapsed);
+        lastFrame = now;
+      }
+      if (elapsed > 5700 && !shown) revealMessage();
+      if (elapsed > 8500 && !finished) finish();
+      frame = requestAnimationFrame(tick);
+    }
+
+    function revealMessage() {
+      shown = true;
+      document.body.classList.add('message-visible');
+      message.removeAttribute('aria-hidden');
+      announcement.textContent = 'descansa mi negra ...';
+    }
+
+    function finish() {
+      finished = true;
+      document.body.classList.add('finished');
+      replay.disabled = false;
+      // Mantiene el siguiente Tab en el control para repetir, sin mover el foco.
+    }
+
+    function play() {
+      cancelAnimationFrame(frame);
+      document.body.classList.remove('message-visible', 'finished');
+      // Reinicia también las animaciones CSS cuando se pulsa «otra vez».
+      void message.offsetWidth;
+      message.setAttribute('aria-hidden', 'true');
+      announcement.textContent = '';
+      replay.disabled = true;
+      start.disabled = true;
+      shown = finished = false;
+      running = true;
+      resize();
+      document.body.classList.add('playing');
+      begun = performance.now();
+      lastFrame = 0;
+      if (reducedMotion.matches) {
+        draw(9000);
+        revealMessage();
+        finish();
+      } else {
+        frame = requestAnimationFrame(tick);
+      }
+    }
+
+    start.addEventListener('click', () => {
+      if (start.disabled) return;
+      start.disabled = true;
+      start.classList.add('activating');
+      // Deja ver cómo se hunde el botón antes de empezar la sorpresa.
+      if (reducedMotion.matches) play();
+      else window.setTimeout(play, 420);
+    });
+    replay.addEventListener('click', play);
+    window.addEventListener('resize', resize);
+    reducedMotion.addEventListener('change', () => { if (running) play(); });
+    document.addEventListener('visibilitychange', () => {
+      if (!running || reducedMotion.matches) return;
+      cancelAnimationFrame(frame);
+      if (!document.hidden) frame = requestAnimationFrame(tick);
+    });
+    resize();
+  </script>
+</body>
+</html>
